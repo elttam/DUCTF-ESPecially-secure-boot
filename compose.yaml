@@ -1,0 +1,27 @@
+# tested using Docker Compose version v2.28.1 on *nix
+
+services:
+# grey
+  solution:
+    build: solution
+    stdin_open: true
+    tty: true
+    container_name: "ductf24-pwn-espboot-solution"
+    volumes:
+      - ./shared:/shared
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # Mount the X11 socket
+    environment:
+      - DISPLAY=${DISPLAY}
+    networks:
+      - ductf
+
+# beret
+  challenge:
+    build: challenge
+    container_name: "ductf24-pwn-espboot-challenge"
+    networks:
+      - ductf
+
+networks:
+  ductf:
+    driver: bridge

@@ -1,0 +1,96 @@
+// ESP32 image format for 010 Editor
+
+typedef uchar uint8_t;
+typedef uint32 uint32_t;
+
+#define ESP_IMAGE_MAX_SEGMENTS 16
+
+enum <uint8_t> ESP_MAGIC_BYTES {
+    ESP_IMAGE_HEADER_MAGIC = 0xE9,
+    WP_PIN_DISABLED = 0xEE
+};
+
+enum <uint8_t> esp_image_spi_mode_t {
+    ESP_IMAGE_SPI_MODE_QIO,
+    ESP_IMAGE_SPI_MODE_QOUT,
+    ESP_IMAGE_SPI_MODE_DIO,
+    ESP_IMAGE_SPI_MODE_DOUT,
+    ESP_IMAGE_SPI_MODE_FAST_READ,
+    ESP_IMAGE_SPI_MODE_SLOW_READ
+};
+
+enum <uint8_t> esp_image_spi_freq_t {
+    ESP_IMAGE_SPI_SPEED_40M,
+    ESP_IMAGE_SPI_SPEED_26M,
+    ESP_IMAGE_SPI_SPEED_20M,
+    ESP_IMAGE_SPI_SPEED_80M = 0xF
+};
+
+enum <uint8_t> esp_image_flash_size_t {
+    ESP_IMAGE_FLASH_SIZE_1MB = 0,
+    ESP_IMAGE_FLASH_SIZE_2MB,
+    ESP_IMAGE_FLASH_SIZE_4MB,
+    ESP_IMAGE_FLASH_SIZE_8MB,
+    ESP_IMAGE_FLASH_SIZE_16MB,
+    ESP_IMAGE_FLASH_SIZE_MAX
+};
+
+typedef struct {
+    ESP_MAGIC_BYTES magic <format=hex>;
+    uint8_t segment_count;
+    esp_image_spi_mode_t spi_mode;
+    esp_image_spi_freq_t spi_speed: 4;
+    esp_image_flash_size_t spi_size: 4;
+    uint32_t entry_addr <format=hex>;
+    ESP_MAGIC_BYTES wp_pin <format=hex>;
+    uint8_t spi_pin_drv[3];
+    uint8_t reserved[11];
+    uint8_t hash_appended;
+} esp_image_header_t;
+
+typedef struct {
+    uint32_t load_addr <format=hex>; // Display load address in hex
+    uint32_t data_len  <format=hex>;
+} esp_image_segment_header_t;
+
+typedef struct {
+    esp_image_segment_header_t header;
+    uchar data[header.data_len];
+} esp_image_segment_t;
+
+typedef struct {
+    uint32_t version;
+    uint8_t signature[64] <format=hex>;
+} esp_secure_boot_sig_block_t;
+
+//// image parser
+
+LittleEndian();
+
+esp_image_header_t header;
+
+// Check for header
+if( header.segment_count > ESP_IMAGE_MAX_SEGMENTS)
+{
+    Warning( "Segment count too large." );
+    return -1;
+}
+
+esp_image_segment_t segments[header.segment_count] <optimize=false>;
+
+local int i;
+local int seg_align = 0;
+for(i = 0; i < header.segment_count; i++) {
+    seg_align += segments[i].header.data_len;
+}
+
+uchar padding[(seg_align + 15) % 16];
+uchar checksum <format=hex>;
+
+if(header.hash_appended) {
+    uchar sha256sum[32] <format=hex>;
+}
+
+if((FileSize() - FTell()) >= sizeof(esp_secure_boot_sig_block_t)) {
+    esp_secure_boot_sig_block_t secureboot_sigblock;
+}
